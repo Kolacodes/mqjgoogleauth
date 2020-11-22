@@ -70,43 +70,75 @@ router.get("/:id", function(req, res){
 
   
 // POST EDIT ROUTE 
-router.get("/:id/edit", middleware.checkPostOwnership, function(req, res){
-    post.findById(req.params.id, function(err, foundPost){
-      if(err){
-        res.redirect("back");
-      } else {
-        res.render("posts/edit", {found_post:foundPost})
+// router.get("/:id/edit", middleware.checkPostOwnership, function(req, res){
+//     post.findById(req.params.id, function(err, foundPost){
+//       if(err){
+//         res.redirect("back");
+//       } else {
+//         res.render("posts/edit", {found_post:foundPost})
   
-      };
-    })
-  });
+//       };
+//     })
+//   });
 
 
-
-  //@desc  Update Story
-//@route PUT /stories/:id
-router.put('/:id', middleware.checkPostOwnership,async (req,res)=>{  
+//@desc Show edit page
+//@route GET /stories/edit/:id
+router.get("/:id/edit", middleware.checkPostOwnership, async (req,res)=>{  
     try{
-        let post = await post.findById(req.params.id).lean()
-
-        if(!post){
-            return res.send('error')
+        const found_post = await post.findOne({
+            _id: req.params.id
+        }).lean()
+        if(!found_post){
+            res.send('error/500')
         }
-        if(post.user!=req.user.id){
-            res.redirect('/posts')
+        //To ensure only author can edit his own story
+        if(String(found_post.postedBy.id) !== String(req.user._id)){
+            
+        
+            res.send('error1')
         }else{
-            post = await post.findOneAndUpdate(
-                { _id:req.params.id },req.body ,{
-                    new:true,
-                    runValidators:true
-                }
-            )
-            res.redirect('/')
+            res.render('posts/edit',{
+                found_post
+            })
         }
     }
     catch(err){
         console.error(err)
-        return res.redirect('/posts')
+        return res.redirect('/')
+    }
+    
+})
+ 
+
+
+
+  //@desc  Update Post
+//@route PUT /stories/:id
+router.put('/:id', middleware.checkPostOwnership,async (req,res)=>{  
+    try{
+        let found_post = await post.findById(req.params.id).lean()
+
+        if(!found_post){
+            return res.send('error')
+        }
+        if(String(found_post.postedBy.id) !== String(req.user._id)){
+            console.log('erroruser')
+            res.redirect('/posts')
+        }else{
+            found_post = await post.findByIdAndUpdate(
+                { _id: req.params.id }, req.body.found_post, {
+                    new:true,
+                    runValidators:true
+                }
+            )
+            console.log('update successful')
+            res.redirect('/')
+        }
+    }
+    catch(err){
+        console.log(err)
+        return res.redirect('/login')
     }
 
 })
@@ -122,6 +154,8 @@ router.put('/:id', middleware.checkPostOwnership,async (req,res)=>{
 //         }
 //     } )
 // })
+
+
 
 //   DELETE ROUTE
 router.delete('/:id', middleware.checkPostOwnership, function(req, res){
